@@ -330,7 +330,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: "${{ env.APP_NAME }} ${{ steps.version.outputs.app_version }}"
-          draft: true
+          draft: false
           prerelease: false
           make_latest: true
           files: |
@@ -369,10 +369,9 @@ jobs:
           echo "- **Build:** ${{ env.bundle_build_version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **DMG:** ${{ env.dmg_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **EdDSA Signed:** ${SIGNED}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Release:** Draft created (requires manual publishing)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release:** Published automatically as latest" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Review the draft release on GitHub" >> $GITHUB_STEP_SUMMARY
-          echo "2. Add release notes" >> $GITHUB_STEP_SUMMARY
-          echo "3. Publish the release when ready" >> $GITHUB_STEP_SUMMARY
-          echo "4. No appcast commit is required; Sparkle uses releases/latest/download/appcast.xml" >> $GITHUB_STEP_SUMMARY
+          echo "1. Review the published release on GitHub" >> $GITHUB_STEP_SUMMARY
+          echo "2. Update release notes if needed" >> $GITHUB_STEP_SUMMARY
+          echo "3. No appcast commit is required; Sparkle uses releases/latest/download/appcast.xml" >> $GITHUB_STEP_SUMMARY
