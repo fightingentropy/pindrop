@@ -69,12 +69,13 @@ just release 1.9.0
 ```
 
 This will:
-1. Bump version/build and commit the change
-2. Run tests
-3. Build self-signed release DMG
-4. Generate `appcast.xml`
-5. Create and push tag
-6. Create GitHub release using `gh` and attach DMG + `appcast.xml`
+1. Create/edit contextual release notes (`release-notes/vX.Y.Z.md`)
+2. Bump version/build and commit the change (if needed)
+3. Run tests
+4. Build self-signed release DMG
+5. Generate `appcast.xml`
+6. Create and push tag
+7. Create GitHub release using `gh` with notes + DMG + `appcast.xml`
 
 ### Notarization (requires Apple Developer account)
 

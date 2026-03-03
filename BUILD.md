@@ -46,6 +46,7 @@ just build-release      # Release build
 just dmg                # Build + create DMG
 just dmg-self-signed    # Build + create self-signed DMG (no Apple developer account)
 just appcast dist/Pindrop.dmg   # Generate appcast.xml for DMG
+just release-notes 1.9.0        # Create draft release notes file
 just release 1.9.0      # Manual GitHub release workflow (local)
 ```
 
@@ -105,13 +106,14 @@ just release 1.9.0
 ```
 
 This runs:
-1. Bump version/build in `project.pbxproj`
-2. Commit version bump
-3. `just test`
-4. `just dmg-self-signed`
-5. `just appcast dist/Pindrop.dmg`
-6. Create and push tag (`vX.Y.Z`)
-7. Create GitHub release with DMG + `appcast.xml` via `gh`
+1. Ensure contextual release notes exist (`release-notes/vX.Y.Z.md`)
+2. Bump version/build in `project.pbxproj` (if needed)
+3. Commit version bump (if needed)
+4. `just test`
+5. `just dmg-self-signed`
+6. `just appcast dist/Pindrop.dmg`
+7. Create and push tag (`vX.Y.Z`)
+8. Create GitHub release with notes + DMG + `appcast.xml` via `gh`
 
 Optional notarization/stapling for signed distribution:
 ```bash

@@ -186,7 +186,7 @@ release-local: clean build-release sign dmg
 
 # Manual GitHub release workflow
 # Usage: just release 1.9.0
-# Runs locally: tests -> self-signed DMG -> appcast -> tag -> push tag -> gh release create
+# Runs locally: tests -> self-signed DMG -> appcast -> release notes -> tag -> push tag -> gh release create
 release version:
 	#!/usr/bin/env bash
 	set -euo pipefail
@@ -195,6 +195,7 @@ release version:
 	TAG="v${VERSION}"
 	DMG_PATH="{{dmg_dir}}/{{app_name}}.dmg"
 	APPCAST_PATH="appcast.xml"
+	NOTES_PATH="release-notes/${TAG}.md"
 	
 	# Validate version format (X.Y.Z)
 	if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -227,13 +228,23 @@ release version:
 		exit 1
 	fi
 
-	# Ensure tag does not already exist
-	if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
-		echo "❌ Tag already exists locally: ${TAG}"
+	# Ensure release does not already exist
+	if gh release view "${TAG}" >/dev/null 2>&1; then
+		echo "❌ GitHub release already exists: ${TAG}"
 		exit 1
 	fi
-	if git ls-remote --exit-code --tags origin "${TAG}" >/dev/null 2>&1; then
-		echo "❌ Tag already exists on origin: ${TAG}"
+
+	# Ensure release notes exist and are edited
+	if [ ! -f "${NOTES_PATH}" ]; then
+		echo "📝 No release notes found for ${TAG}. Creating draft..."
+		just release-notes "${VERSION}"
+		echo "❌ Draft release notes created at ${NOTES_PATH}."
+		echo "   Review/edit the file and rerun: just release ${VERSION}"
+		exit 1
+	fi
+	if grep -q "TODO" "${NOTES_PATH}"; then
+		echo "❌ Release notes still contain TODO markers: ${NOTES_PATH}"
+		echo "   Please finalize notes before releasing."
 		exit 1
 	fi
 	
@@ -287,20 +298,31 @@ release version:
 	# Step 3: Update appcast
 	echo "📡 Generating appcast.xml..."
 	just appcast "${DMG_PATH}"
-	
-	# Create annotated tag
-	echo "🏷️  Creating tag ${TAG}..."
-	git tag -a "${TAG}" -m "Release ${TAG}"
-	
-	# Push tag
-	echo "🚀 Pushing tag to origin..."
-	git push origin "${TAG}"
 
-	# Create GitHub release and attach assets
-	echo "📤 Creating GitHub release with DMG + appcast..."
+	# Step 4: Validate release notes
+	echo "📝 Using release notes: ${NOTES_PATH}"
+	
+	# Step 5: Create annotated tag (if needed)
+	if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+		echo "ℹ️  Tag already exists locally: ${TAG}"
+	else
+		echo "🏷️  Creating tag ${TAG}..."
+		git tag -a "${TAG}" -m "Release ${TAG}"
+	fi
+	
+	# Step 6: Push tag (if needed)
+	if git ls-remote --exit-code --tags origin "${TAG}" >/dev/null 2>&1; then
+		echo "ℹ️  Tag already exists on origin: ${TAG}"
+	else
+		echo "🚀 Pushing tag to origin..."
+		git push origin "${TAG}"
+	fi
+
+	# Step 7: Create GitHub release and attach assets
+	echo "📤 Creating GitHub release with DMG + appcast + notes..."
 	gh release create "${TAG}" "${DMG_PATH}" "${APPCAST_PATH}" \
 		--title "Pindrop ${TAG}" \
-		--generate-notes
+		--notes-file "${NOTES_PATH}"
 	
 	echo ""
 	echo "✅ Release ${TAG} published!"
@@ -308,8 +330,67 @@ release version:
 	echo "📋 Uploaded assets:"
 	echo "  - ${DMG_PATH}"
 	echo "  - ${APPCAST_PATH}"
+	echo "📝 Release notes:"
+	echo "  - ${NOTES_PATH}"
 	echo ""
 	echo "ℹ️  Optional follow-up: push main when you're ready."
+
+# Generate a draft release notes file for a version
+# Usage: just release-notes 1.9.0
+release-notes version:
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	VERSION="{{version}}"
+	TAG="v${VERSION}"
+	NOTES_DIR="release-notes"
+	NOTES_PATH="${NOTES_DIR}/${TAG}.md"
+
+	if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		echo "❌ Invalid version format: $VERSION"
+		echo "   Expected format: X.Y.Z (e.g., 1.9.0)"
+		exit 1
+	fi
+
+	mkdir -p "${NOTES_DIR}"
+
+	if [ -f "${NOTES_PATH}" ]; then
+		echo "ℹ️  Release notes already exist: ${NOTES_PATH}"
+		exit 0
+	fi
+
+	if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null 2>&1; then
+		PREV_TAG=$(git tag --sort=-version:refname | awk -v tag="${TAG}" '$0 != tag {print; exit}')
+	else
+		PREV_TAG=$(git tag --sort=-version:refname | head -1)
+	fi
+
+	COMMITS=$(git log --no-merges --pretty=format:'- %s' "${PREV_TAG:+${PREV_TAG}..HEAD}" | head -8 || true)
+	COMPARE_URL=""
+	if [ -n "${PREV_TAG}" ]; then
+		COMPARE_URL="https://github.com/watzon/pindrop/compare/${PREV_TAG}...${TAG}"
+	fi
+
+	printf '%s\n' \
+		'## What's New' \
+		'' \
+		"- TODO: Add 2-5 user-facing highlights for ${TAG}." \
+		'' \
+		'## Improvements' \
+		'' \
+		'- TODO: Add notable fixes, polish, or infrastructure changes users should know about.' \
+		'' \
+		'## Full Changelog' \
+		'' \
+		"${COMPARE_URL:-TODO: Add compare URL}" \
+		> "${NOTES_PATH}"
+
+	if [ -n "${COMMITS}" ]; then
+		printf '\n## Commit Context (for drafting)\n\n%s\n' "${COMMITS}" >> "${NOTES_PATH}"
+	fi
+
+	echo "✅ Draft release notes created: ${NOTES_PATH}"
+	echo "✏️  Review/edit the file, remove TODO markers, then run: just release ${VERSION}"
 
 # Generate appcast.xml for Sparkle updates
 # Usage: just appcast dist/Pindrop.dmg

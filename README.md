@@ -145,6 +145,7 @@ just --list             # Show all available commands
 **Release commands (maintainers):**
 
 ```bash
+just release-notes 1.9.0  # Create draft release notes file at release-notes/v1.9.0.md
 just release 1.9.0  # Local manual release (tests, self-signed DMG, appcast, tag, push tag, GitHub release)
 ```
 
@@ -187,6 +188,9 @@ just release 1.9.0
 Equivalent explicit steps:
 
 ```bash
+# 0. Create and edit contextual release notes
+just release-notes 1.9.0
+
 # 1. Ensure tests pass
 just test
 
@@ -200,8 +204,8 @@ just appcast dist/Pindrop.dmg
 git tag -a v1.9.0 -m "Release v1.9.0"
 git push origin v1.9.0
 
-# 5. Create GitHub release and attach DMG + appcast.xml
-gh release create v1.9.0 dist/Pindrop.dmg appcast.xml --title "Pindrop v1.9.0" --generate-notes
+# 5. Create GitHub release with notes + attach DMG + appcast.xml
+gh release create v1.9.0 dist/Pindrop.dmg appcast.xml --title "Pindrop v1.9.0" --notes-file release-notes/v1.9.0.md
 ```
 
 ## First Launch
