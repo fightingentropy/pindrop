@@ -343,6 +343,9 @@ appcast dmg_path:
 		echo "⚠️  generate_appcast does not support --download-url-prefix; generating without explicit URL prefix"; \
 		./bin/generate_appcast updates/; \
 	fi; \
+	if [ -f "updates/appcast.xml" ]; then \
+		cp updates/appcast.xml appcast.xml; \
+	fi; \
 	rm -rf updates/
 	@echo "✅ Appcast generated: appcast.xml"
 	@echo ""
