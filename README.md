@@ -2,8 +2,8 @@
 
 > The only 100% open source, truly Mac-native AI dictation app
 
-[![GitHub stars](https://img.shields.io/github/stars/watzon/pindrop?style=flat-square)](https://github.com/watzon/pindrop/stargazers)
-[![GitHub license](https://img.shields.io/github/license/watzon/pindrop?style=flat-square)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/fightingentropy/pindrop?style=flat-square)](https://github.com/fightingentropy/pindrop/stargazers)
+[![GitHub license](https://img.shields.io/github/license/fightingentropy/pindrop?style=flat-square)](LICENSE)
 [![macOS](https://img.shields.io/badge/macOS-14.0+-blue?style=flat-square&logo=apple)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-5.9+-orange?style=flat-square&logo=swift)](https://swift.org/)
 
@@ -11,7 +11,7 @@
 
 **Pindrop** is a menu bar dictation app for macOS that turns your speech into text—completely offline, completely private. Built with pure Swift/SwiftUI and powered by WhisperKit for optimal Apple Silicon performance.
 
-**[Download Latest Release](https://github.com/watzon/pindrop/releases)** · **[Documentation](#documentation)** · **[Contributing](#contributing)** · **[Community](#community)**
+**[Download Latest Release](https://github.com/fightingentropy/pindrop/releases)** · **[Documentation](#documentation)** · **[Contributing](#contributing)** · **[Community](#community)**
 
 ---
 
@@ -66,8 +66,10 @@ While other dictation apps compromise on privacy, performance, or platform fidel
 - **[Swift](https://swift.org/)** — Apple's modern, fast, and safe programming language
 - **[SwiftUI](https://developer.apple.com/swiftui/)** — Declarative UI framework for truly native Mac apps
 - **[WhisperKit](https://www.argmaxinc.com/whisperkit)** — High-performance Core ML implementation of OpenAI Whisper by Argmax, Inc.
+- **[Sparkle](https://sparkle-project.org/)** — Native macOS app update framework
+- **[FluidAudio](https://github.com/FluidInference/FluidAudio)** — Audio pipeline and transcription support utilities
 - **[SwiftData](https://developer.apple.com/documentation/swiftdata)** — Modern data persistence framework
-- **Just one external dependency** — WhisperKit. Everything else is Apple's first-party frameworks.
+- **Supporting SwiftPM packages** — Small supporting libraries for tokenization, model distribution, and update delivery
 
 ## Requirements
 
@@ -80,7 +82,7 @@ While other dictation apps compromise on privacy, performance, or platform fidel
 
 Since Pindrop is currently distributed as a self-signed build, you'll need to approve it on first launch:
 
-1. Download `Pindrop.dmg` from the [releases page](https://github.com/watzon/pindrop/releases)
+1. Download `Pindrop.dmg` from the [releases page](https://github.com/fightingentropy/pindrop/releases)
 2. Open the DMG and drag Pindrop to Applications
 3. **First launch only:** Right-click Pindrop → Open
 4. If you see "cannot be opened because the developer cannot be verified":
@@ -103,7 +105,7 @@ Since this is an open-source project, you can also build it yourself. Don't worr
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/watzon/pindrop.git
+git clone https://github.com/fightingentropy/pindrop.git
 cd pindrop
 ```
 
@@ -145,7 +147,7 @@ just --list             # Show all available commands
 **Release commands (maintainers):**
 
 ```bash
-just release 1.5.5  # Bump version, commit, tag, push → triggers CI
+just release 1.9.4  # Example: bump version, commit, tag, push → triggers CI
 ```
 
 ### Manual Build (Alternative)
@@ -180,13 +182,13 @@ Releases are built via GitHub Actions. To create a new release:
 
 ```bash
 # 1. Bump version, commit, tag, and push (triggers CI)
-just release 1.5.5
+just release 1.9.4
 
 # 2. Wait for GitHub Actions to complete
-#    Watch: https://github.com/watzon/pindrop/actions
+#    Watch: https://github.com/fightingentropy/pindrop/actions
 
-# 3. Publish the draft release on GitHub
-#    https://github.com/watzon/pindrop/releases
+# 3. Review the published release on GitHub
+#    https://github.com/fightingentropy/pindrop/releases
 ```
 
 ## First Launch
@@ -401,8 +403,8 @@ xcodebuild test -scheme Pindrop -destination 'platform=macOS'
 
 Join the conversation and get help:
 
-- **[GitHub Discussions](https://github.com/watzon/pindrop/discussions)** — Ask questions, share ideas, and connect with other users
-- **[GitHub Issues](https://github.com/watzon/pindrop/issues)** — Report bugs or request features
+- **[GitHub Repository](https://github.com/fightingentropy/pindrop)** — Browse source, releases, and project updates
+- **[GitHub Issues](https://github.com/fightingentropy/pindrop/issues)** — Report bugs or request features
 
 ## Contributing
 
@@ -419,10 +421,6 @@ MIT License. See the [LICENSE](LICENSE) file for details.
 - [WhisperKit](https://github.com/argmaxinc/WhisperKit) — The Swift implementation that makes this possible
 - [OpenAI Whisper](https://github.com/openai/whisper) — The original speech recognition model
 
----
-
-**Note**: This project is currently open source and free to build yourself. Pre-built binaries may be available for purchase in the future.
-
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=watzon/pindrop&type=date&legend=top-left)](https://www.star-history.com/#watzon/pindrop&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=fightingentropy/pindrop&type=date&legend=top-left)](https://www.star-history.com/#fightingentropy/pindrop&type=date&legend=top-left)

@@ -357,11 +357,11 @@ These are project-specific guardrails. Violating them will block your PR.
 
 - **Architecture questions**: Read [AGENTS.md](AGENTS.md) first — it covers structure, conventions, and where to find things.
 - **Build issues**: See [BUILD.md](BUILD.md) for the full build system reference.
-- **Still stuck?** Open a [GitHub Discussion](https://github.com/watzon/pindrop/discussions) or ask in an issue.
+- **Still stuck?** Open a [GitHub Issue](https://github.com/fightingentropy/pindrop/issues/new) and include the details below.
 
 ### Reporting Bugs
 
-Open a [GitHub Issue](https://github.com/watzon/pindrop/issues/new) with:
+Open a [GitHub Issue](https://github.com/fightingentropy/pindrop/issues/new) with:
 
 - macOS version and Mac model
 - Steps to reproduce
@@ -370,7 +370,7 @@ Open a [GitHub Issue](https://github.com/watzon/pindrop/issues/new) with:
 
 ### Feature Requests
 
-Open a [GitHub Issue](https://github.com/watzon/pindrop/issues/new) describing:
+Open a [GitHub Issue](https://github.com/fightingentropy/pindrop/issues/new) describing:
 
 - The problem you're trying to solve
 - Your proposed solution

@@ -1,10 +1,12 @@
 #!/bin/bash
 
+PROJECT_PATH="$(cd "$(dirname "$0")" && pwd)"
+
 # Create a temporary Swift file to bootstrap the project
-cat > /tmp/bootstrap_pindrop.swift << 'EOF'
+cat > /tmp/bootstrap_pindrop.swift << EOF
 import Foundation
 
-let projectPath = "/Users/watzon/Projects/personal/pindrop"
+let projectPath = ProcessInfo.processInfo.environment["PINDROP_PROJECT_PATH"] ?? "${PROJECT_PATH}"
 let xcodeproj = "\(projectPath)/Pindrop.xcodeproj"
 
 print("Creating Xcode project at: \(xcodeproj)")

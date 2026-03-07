@@ -2618,7 +2618,7 @@ final class AppCoordinator {
     }
 
     private func handleReportIssue() {
-        guard let supportURL = URL(string: "https://github.com/watzon/pindrop/issues") else { return }
+        guard let supportURL = URL(string: "https://github.com/fightingentropy/pindrop/issues") else { return }
         NSWorkspace.shared.open(supportURL)
     }
 

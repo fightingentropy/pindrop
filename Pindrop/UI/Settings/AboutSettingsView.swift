@@ -93,7 +93,7 @@ struct AboutSettingsView: View {
             Divider()
                .background(AppColors.divider)
 
-            Link(destination: URL(string: "https://github.com/watzon/pindrop")!) {
+            Link(destination: URL(string: "https://github.com/fightingentropy/pindrop")!) {
                HStack {
                   Text("Pindrop on GitHub")
                      .font(AppTypography.body)
@@ -111,7 +111,7 @@ struct AboutSettingsView: View {
    private var linksSection: some View {
       SettingsCard(title: "Support", icon: "questionmark.circle.fill") {
          VStack(alignment: .leading, spacing: AppTheme.Spacing.md) {
-            Link(destination: URL(string: "https://github.com/watzon/pindrop/issues")!) {
+            Link(destination: URL(string: "https://github.com/fightingentropy/pindrop/issues")!) {
                HStack {
                   Text("Report an Issue")
                      .font(AppTypography.body)

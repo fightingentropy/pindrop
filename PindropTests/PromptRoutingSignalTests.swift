@@ -74,7 +74,7 @@ final class PromptRoutingSignalTests: XCTestCase {
             focusedElementValue: nil,
             selectedText: nil,
             documentPath: nil,
-            browserURL: "https://github.com/watzon/pindrop"
+            browserURL: "https://github.com/fightingentropy/pindrop"
         )
         let snapshot = ContextSnapshot(
             timestamp: Date(),
