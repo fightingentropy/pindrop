@@ -55,8 +55,8 @@ final class PreviewSettingsStore: SettingsStoreProtocol {
     @Published var toggleHotkey = "⌥Space"
     @Published var toggleHotkeyCode = 49
     @Published var toggleHotkeyModifiers = 0x800
-    @Published var pushToTalkHotkey = "⌘/"
-    @Published var pushToTalkHotkeyCode = 44
+    @Published var pushToTalkHotkey = "⌘R"
+    @Published var pushToTalkHotkeyCode = 54
     @Published var pushToTalkHotkeyModifiers = 0x100
     @Published var copyLastTranscriptHotkey = "⇧⌘C"
     @Published var copyLastTranscriptHotkeyCode = 8

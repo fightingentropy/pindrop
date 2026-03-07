@@ -318,7 +318,7 @@ final class AppCoordinatorContextFlowTests: XCTestCase {
             vibeLiveSessionEnabled: vibeLiveSessionEnabled,
             hotkeys: HotkeySettingsSnapshot(
                 hasCompletedOnboarding: true,
-                pushToTalk: HotkeyBindingSnapshot(hotkey: "⌘/", keyCode: 44, modifiers: 0x100),
+                pushToTalk: HotkeyBindingSnapshot(hotkey: "⌘R", keyCode: 54, modifiers: 0x100),
                 toggle: HotkeyBindingSnapshot(hotkey: "⌥Space", keyCode: 49, modifiers: 0x800),
                 copyLastTranscript: HotkeyBindingSnapshot(hotkey: "⇧⌘C", keyCode: 8, modifiers: 0x300),
                 quickCapturePTT: HotkeyBindingSnapshot(hotkey: "⇧⌥Space", keyCode: 49, modifiers: 0xA00),

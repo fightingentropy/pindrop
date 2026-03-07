@@ -77,8 +77,8 @@ final class SettingsStore: ObservableObject {
          static let toggleHotkeyCode = 49
          static let toggleHotkeyModifiers = 0x800
 
-         static let pushToTalkHotkey = "⌘/"
-         static let pushToTalkHotkeyCode = 44
+         static let pushToTalkHotkey = "⌘R"
+         static let pushToTalkHotkeyCode = 54
          static let pushToTalkHotkeyModifiers = 0x100
 
          static let copyLastTranscriptHotkey = "⇧⌘C"
