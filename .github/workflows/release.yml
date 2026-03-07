@@ -166,6 +166,8 @@ jobs:
         run: |
           # Build the app in Release mode (self-signed, no Developer account)
           # Disable code signing for CI - app will be ad-hoc signed
+          rm -rf "$HOME/Library/Caches/org.swift.swiftpm"
+
           xcodebuild \
             -scheme "${{ env.SCHEME }}" \
             -configuration "${{ env.CONFIGURATION }}" \
