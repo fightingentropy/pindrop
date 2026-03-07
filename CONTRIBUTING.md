@@ -117,7 +117,7 @@ test: add tests for push-to-talk key-up handling
 
 ## Code Standards
 
-All conventions here are drawn from the project's [AGENTS.md](AGENTS.md), which is the authoritative reference.
+All conventions here reflect the project's current structure, tooling, and coding patterns.
 
 ### File Headers
 
@@ -330,7 +330,7 @@ Before submitting, verify:
 - [ ] Secrets use Keychain, not UserDefaults
 - [ ] Permissions are requested on first use, not at launch
 - [ ] Follows existing patterns (services, logging, error handling)
-- [ ] Documentation updated if applicable (`README.md` for user-facing, `AGENTS.md` for architecture)
+- [ ] Documentation updated if applicable (`README.md`, `BUILD.md`, or `CONTRIBUTING.md`)
 - [ ] Commit messages are clear and descriptive
 
 ## Anti-Patterns to Avoid
@@ -355,7 +355,7 @@ These are project-specific guardrails. Violating them will block your PR.
 
 ### Questions
 
-- **Architecture questions**: Read [AGENTS.md](AGENTS.md) first — it covers structure, conventions, and where to find things.
+- **Architecture questions**: Review the project structure in this guide and inspect the nearest service or UI module before changing patterns.
 - **Build issues**: See [BUILD.md](BUILD.md) for the full build system reference.
 - **Still stuck?** Open a [GitHub Issue](https://github.com/fightingentropy/pindrop/issues/new) and include the details below.
 
