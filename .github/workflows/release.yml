@@ -91,11 +91,15 @@ jobs:
           echo "Building version: $VERSION (app: $APP_VERSION, sha: $TARGET_SHA)"
 
       - name: Import Repository Code Signing Certificate
-        if: ${{ secrets.PINDROP_CODESIGN_P12_BASE64 != '' && secrets.PINDROP_CODESIGN_P12_PASSWORD != '' }}
         env:
           PINDROP_CODESIGN_P12_BASE64: ${{ secrets.PINDROP_CODESIGN_P12_BASE64 }}
           PINDROP_CODESIGN_P12_PASSWORD: ${{ secrets.PINDROP_CODESIGN_P12_PASSWORD }}
         run: |
+          if [ -z "${PINDROP_CODESIGN_P12_BASE64}" ] || [ -z "${PINDROP_CODESIGN_P12_PASSWORD}" ]; then
+            echo "⚠️  No repository code signing certificate configured; release will fall back to ad hoc signing"
+            exit 0
+          fi
+
           KEYCHAIN_PATH="${RUNNER_TEMP}/pindrop-signing.keychain-db"
           CERT_PATH="${RUNNER_TEMP}/pindrop-signing.p12"
 
