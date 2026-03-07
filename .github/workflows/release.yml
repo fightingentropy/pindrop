@@ -16,6 +16,7 @@ env:
   SCHEME: Pindrop
   CONFIGURATION: Release
   SPARKLE_VERSION: "2.6.4"
+  CODE_SIGN_IDENTITY: "Pindrop Local Dev"
 
 jobs:
   build:
@@ -89,6 +90,28 @@ jobs:
           echo "target_sha=$TARGET_SHA" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION (app: $APP_VERSION, sha: $TARGET_SHA)"
 
+      - name: Import Repository Code Signing Certificate
+        if: ${{ secrets.PINDROP_CODESIGN_P12_BASE64 != '' && secrets.PINDROP_CODESIGN_P12_PASSWORD != '' }}
+        env:
+          PINDROP_CODESIGN_P12_BASE64: ${{ secrets.PINDROP_CODESIGN_P12_BASE64 }}
+          PINDROP_CODESIGN_P12_PASSWORD: ${{ secrets.PINDROP_CODESIGN_P12_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="${RUNNER_TEMP}/pindrop-signing.keychain-db"
+          CERT_PATH="${RUNNER_TEMP}/pindrop-signing.p12"
+
+          echo "$PINDROP_CODESIGN_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$PINDROP_CODESIGN_P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" "$HOME/Library/Keychains/login.keychain-db"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          echo "✅ Imported repository code signing identity"
+          security find-identity -v -p codesigning
+
       - name: Wait For CI To Pass
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -157,6 +180,16 @@ jobs:
             find DerivedData -name "*.app" -type d
             exit 1
           fi
+
+          if security find-identity -v -p codesigning | grep -F "\"${{ env.CODE_SIGN_IDENTITY }}\"" >/dev/null; then
+            codesign --force --deep --sign "${{ env.CODE_SIGN_IDENTITY }}" "$APP_PATH"
+            echo "✅ App signed with persistent identity: ${{ env.CODE_SIGN_IDENTITY }}"
+          else
+            codesign --force --deep --sign - "$APP_PATH"
+            echo "⚠️  No persistent signing identity configured on runner; app signed ad hoc"
+          fi
+
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
 
       - name: Read Bundle Versions
         run: |
@@ -332,7 +365,6 @@ jobs:
           name: "${{ env.APP_NAME }} ${{ steps.version.outputs.app_version }}"
           draft: false
           prerelease: false
-          make_latest: true
           files: |
             ${{ env.dmg_path }}
             dist/appcast.xml
