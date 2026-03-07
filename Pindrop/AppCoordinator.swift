@@ -144,6 +144,8 @@ final class AppCoordinator {
     
     private var isQuickCaptureMode = false
     private var quickCaptureTranscription: String?
+    private var isPushToTalkKeyHeld = false
+    private var isQuickCapturePTTKeyHeld = false
     
     // MARK: - State
     
@@ -1412,6 +1414,7 @@ final class AppCoordinator {
     
     private func handlePushToTalkStart() async {
         guard !isRecording && !isProcessing else { return }
+        isPushToTalkKeyHeld = true
         
         do {
             try await startRecording(source: .hotkeyPushToTalk)
@@ -1424,6 +1427,7 @@ final class AppCoordinator {
     }
     
     private func handlePushToTalkEnd() async {
+        isPushToTalkKeyHeld = false
         guard isRecording else { return }
         
         do {
@@ -1440,6 +1444,7 @@ final class AppCoordinator {
     private func handleQuickCapturePTTStart() async {
         guard !isRecording && !isProcessing else { return }
 
+        isQuickCapturePTTKeyHeld = true
         isQuickCaptureMode = true
         quickCaptureTranscription = nil
 
@@ -1455,6 +1460,7 @@ final class AppCoordinator {
     }
 
     private func handleQuickCapturePTTEnd() async {
+        isQuickCapturePTTKeyHeld = false
         guard isRecording && isQuickCaptureMode else { return }
 
         do {
@@ -1686,11 +1692,21 @@ final class AppCoordinator {
             return
         }
 
+        guard shouldContinueDeferredRecordingStart(for: source) else {
+            cancelDeferredRecordingStart(source: source)
+            return
+        }
+
         if settingsStore.pauseMediaOnRecording || settingsStore.muteAudioDuringRecording {
-            mediaPauseService.beginRecordingSession(
+            await mediaPauseService.beginRecordingSession(
                 pauseMedia: settingsStore.pauseMediaOnRecording,
                 muteSystemAudio: settingsStore.muteAudioDuringRecording
             )
+
+            guard shouldContinueDeferredRecordingStart(for: source) else {
+                cancelDeferredRecordingStart(source: source)
+                return
+            }
         }
         
         isRecording = true
@@ -1758,6 +1774,43 @@ final class AppCoordinator {
                 floatingIndicatorController.startRecording()
             }
         }
+    }
+
+    private func shouldContinueDeferredRecordingStart(for source: RecordingTriggerSource) -> Bool {
+        Self.shouldContinueDeferredRecordingStart(
+            isPushToTalkSource: source == .hotkeyPushToTalk,
+            isQuickCapturePTTSource: source == .hotkeyQuickCapturePTT,
+            isPushToTalkKeyHeld: isPushToTalkKeyHeld,
+            isQuickCapturePTTKeyHeld: isQuickCapturePTTKeyHeld
+        )
+    }
+
+    static func shouldContinueDeferredRecordingStart(
+        isPushToTalkSource: Bool,
+        isQuickCapturePTTSource: Bool,
+        isPushToTalkKeyHeld: Bool,
+        isQuickCapturePTTKeyHeld: Bool
+    ) -> Bool {
+        if isPushToTalkSource {
+            return isPushToTalkKeyHeld
+        }
+
+        if isQuickCapturePTTSource {
+            return isQuickCapturePTTKeyHeld
+        }
+
+        return true
+    }
+
+    private func cancelDeferredRecordingStart(source: RecordingTriggerSource) {
+        audioRecorder.cancelRecording()
+        mediaPauseService.endRecordingSession()
+
+        if source == .hotkeyQuickCapturePTT {
+            isQuickCaptureMode = false
+        }
+
+        Log.app.info("Cancelled deferred recording start for \(source.rawValue) because the trigger was released before startup completed")
     }
 
     private func logRecordingStartAttempt(source: RecordingTriggerSource) {

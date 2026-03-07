@@ -193,4 +193,51 @@ final class AppCoordinatorContextFlowTests: XCTestCase {
             )
         )
     }
+
+    func testShouldContinueDeferredRecordingStartRequiresHeldKeyForPushToTalkFlows() {
+        XCTAssertTrue(
+            AppCoordinator.shouldContinueDeferredRecordingStart(
+                isPushToTalkSource: true,
+                isQuickCapturePTTSource: false,
+                isPushToTalkKeyHeld: true,
+                isQuickCapturePTTKeyHeld: false
+            )
+        )
+
+        XCTAssertFalse(
+            AppCoordinator.shouldContinueDeferredRecordingStart(
+                isPushToTalkSource: true,
+                isQuickCapturePTTSource: false,
+                isPushToTalkKeyHeld: false,
+                isQuickCapturePTTKeyHeld: false
+            )
+        )
+
+        XCTAssertTrue(
+            AppCoordinator.shouldContinueDeferredRecordingStart(
+                isPushToTalkSource: false,
+                isQuickCapturePTTSource: true,
+                isPushToTalkKeyHeld: false,
+                isQuickCapturePTTKeyHeld: true
+            )
+        )
+
+        XCTAssertFalse(
+            AppCoordinator.shouldContinueDeferredRecordingStart(
+                isPushToTalkSource: false,
+                isQuickCapturePTTSource: true,
+                isPushToTalkKeyHeld: false,
+                isQuickCapturePTTKeyHeld: false
+            )
+        )
+
+        XCTAssertTrue(
+            AppCoordinator.shouldContinueDeferredRecordingStart(
+                isPushToTalkSource: false,
+                isQuickCapturePTTSource: false,
+                isPushToTalkKeyHeld: false,
+                isQuickCapturePTTKeyHeld: false
+            )
+        )
+    }
 }

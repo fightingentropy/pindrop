@@ -44,6 +44,10 @@ protocol AudioCaptureBackend: AnyObject {
     func setPreferredInputDeviceUID(_ uid: String)
 }
 
+private struct CapturedAudioBuffers: @unchecked Sendable {
+    let buffers: [AVAudioPCMBuffer]
+}
+
 // MARK: - AVAudioEngineCaptureBackend
 
 /// Thread-safe buffer storage for audio recording.
@@ -131,12 +135,15 @@ final class AVAudioEngineCaptureBackend: AudioCaptureBackend {
         
         let bufferStorage = self.audioBuffers
         let targetFmt = self.targetFormat
+        guard let converter = AVAudioConverter(from: tapFormat, to: targetFmt) else {
+            self.audioEngine = nil
+            throw AudioRecorderError.engineStartFailed("Unable to configure audio converter")
+        }
         
         inputNode.installTap(onBus: 0, bufferSize: 4096, format: tapFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
 
-            let bufferFormat = buffer.format
-            if let convertedBuffer = self.convertBuffer(buffer, from: bufferFormat, to: targetFmt) {
+            if let convertedBuffer = self.convertBuffer(buffer, using: converter, outputFormat: targetFmt) {
                 bufferStorage.append(convertedBuffer)
                 onBuffer(convertedBuffer)
             }
@@ -211,15 +218,10 @@ final class AVAudioEngineCaptureBackend: AudioCaptureBackend {
     
     private func convertBuffer(
         _ buffer: AVAudioPCMBuffer,
-        from inputFormat: AVAudioFormat,
-        to outputFormat: AVAudioFormat
+        using converter: AVAudioConverter,
+        outputFormat: AVAudioFormat
     ) -> AVAudioPCMBuffer? {
-        guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
-            Log.audio.error("Failed to create audio converter")
-            return nil
-        }
-        
-        let ratio = outputFormat.sampleRate / inputFormat.sampleRate
+        let ratio = outputFormat.sampleRate / buffer.format.sampleRate
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 1
         
         guard let convertedBuffer = AVAudioPCMBuffer(
@@ -392,8 +394,11 @@ final class AudioRecorder {
         
         let collectedBuffers = try captureBackend.stopCapture()
         isRecording = false
-        
-        let audioData = combineBuffersToData(collectedBuffers)
+        let capturedAudioBuffers = CapturedAudioBuffers(buffers: collectedBuffers)
+
+        let audioData = await Task.detached(priority: .userInitiated) {
+            Self.combineBuffersToData(capturedAudioBuffers.buffers)
+        }.value
         
         Log.audio.info("Recording stopped, \(audioData.count) bytes captured")
         
@@ -423,18 +428,21 @@ final class AudioRecorder {
     
     // MARK: - Private Helpers
     
-    private func combineBuffersToData(_ buffers: [AVAudioPCMBuffer]) -> Data {
-        var allSamples: [Float] = []
-        
+    nonisolated
+    private static func combineBuffersToData(_ buffers: [AVAudioPCMBuffer]) -> Data {
+        let totalByteCount = buffers.reduce(into: 0) { partialResult, buffer in
+            partialResult += Int(buffer.frameLength) * MemoryLayout<Float>.size
+        }
+
+        var audioData = Data()
+        audioData.reserveCapacity(totalByteCount)
+
         for buffer in buffers {
             guard let channelData = buffer.floatChannelData else { continue }
-            let frameLength = Int(buffer.frameLength)
-            let samples = Array(UnsafeBufferPointer(start: channelData[0], count: frameLength))
-            allSamples.append(contentsOf: samples)
+            let byteCount = Int(buffer.frameLength) * MemoryLayout<Float>.size
+            audioData.append(contentsOf: UnsafeRawBufferPointer(start: channelData[0], count: byteCount))
         }
-        
-        return allSamples.withUnsafeBufferPointer { bufferPointer in
-            Data(buffer: bufferPointer)
-        }
+
+        return audioData
     }
 }

@@ -25,6 +25,15 @@ private enum NotchPanelMetrics {
 }
 
 extension NSScreen {
+    static func screenContainingMouse() -> NSScreen? {
+        let mouseLocation = NSEvent.mouseLocation
+        return screens.first(where: { $0.frame.contains(mouseLocation) })
+    }
+
+    static func indicatorPresentationScreen(preferred: NSScreen? = nil) -> NSScreen? {
+        screenContainingMouse() ?? preferred ?? NSScreen.main ?? screens.first
+    }
+
     var notchAreaWidth: CGFloat? {
         guard safeAreaInsets.left > 0 else { return nil }
         return safeAreaInsets.left * 2
@@ -136,7 +145,7 @@ final class FloatingIndicatorController: ObservableObject {
             return
         }
         
-        guard let screen = NSScreen.main else { return }
+        guard let screen = NSScreen.indicatorPresentationScreen(preferred: panel?.screen) else { return }
         
         let notchWidth = screen.notchPanelWidth(fallback: NotchPanelMetrics.fallbackNotchWidth)
         let maxPanelWidth = max(0, screen.visibleFrame.width - (NotchPanelMetrics.horizontalInset * 2))

@@ -14,6 +14,26 @@ final class MediaPauseService {
    private typealias GetNowPlayingIsPlayingFunction =
       @convention(c) (DispatchQueue, @escaping (Bool) -> Void) -> Void
 
+   private final class OneShotBoolContinuation: @unchecked Sendable {
+      private let lock = NSLock()
+      private var continuation: CheckedContinuation<Bool, Never>?
+
+      init(continuation: CheckedContinuation<Bool, Never>) {
+         self.continuation = continuation
+      }
+
+      @discardableResult
+      func resumeIfNeeded(_ value: Bool) -> Bool {
+         lock.lock()
+         defer { lock.unlock() }
+
+         guard let continuation else { return false }
+         self.continuation = nil
+         continuation.resume(returning: value)
+         return true
+      }
+   }
+
    private struct SystemAudioState {
       let deviceID: AudioDeviceID
       let previousMute: UInt32?
@@ -35,13 +55,13 @@ final class MediaPauseService {
       loadMediaRemoteFramework()
    }
 
-   func beginRecordingSession(pauseMedia: Bool, muteSystemAudio: Bool) {
+   func beginRecordingSession(pauseMedia: Bool, muteSystemAudio: Bool) async {
       guard !sessionActive else { return }
 
       sessionActive = true
 
       if pauseMedia {
-         didPauseMediaForSession = pauseMediaIfNeeded()
+         didPauseMediaForSession = await pauseMediaIfNeeded()
       }
 
       if muteSystemAudio {
@@ -62,13 +82,13 @@ final class MediaPauseService {
       sessionActive = false
    }
 
-   private func pauseMediaIfNeeded() -> Bool {
+   private func pauseMediaIfNeeded() async -> Bool {
       guard let sendCommandFunction else {
          Log.app.debug("Media pause unavailable: MediaRemote command function missing")
          return false
       }
 
-      guard isNowPlayingActive() else {
+      guard await isNowPlayingActive() else {
          Log.app.debug("Media pause skipped: no active Now Playing session")
          return false
       }
@@ -154,25 +174,24 @@ final class MediaPauseService {
       }
    }
 
-   private func isNowPlayingActive() -> Bool {
+   private func isNowPlayingActive() async -> Bool {
       guard let getNowPlayingIsPlayingFunction else {
          return false
       }
 
-      let semaphore = DispatchSemaphore(value: 0)
-      var isPlaying = false
+      return await withCheckedContinuation { continuation in
+         let oneShot = OneShotBoolContinuation(continuation: continuation)
 
-      getNowPlayingIsPlayingFunction(DispatchQueue.global(qos: .userInitiated)) { playing in
-         isPlaying = playing
-         semaphore.signal()
+         DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 0.5) {
+            if oneShot.resumeIfNeeded(false) {
+               Log.app.debug("MediaRemote Now Playing query timed out")
+            }
+         }
+
+         getNowPlayingIsPlayingFunction(DispatchQueue.global(qos: .userInitiated)) { playing in
+            _ = oneShot.resumeIfNeeded(playing)
+         }
       }
-
-      if semaphore.wait(timeout: .now() + 0.5) == .timedOut {
-         Log.app.debug("MediaRemote Now Playing query timed out")
-         return false
-      }
-
-      return isPlaying
    }
 
    private func defaultOutputDeviceID() -> AudioDeviceID? {

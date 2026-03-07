@@ -11,6 +11,9 @@ import Combine
 
 private final class PillHostingView: NSHostingView<PillIndicatorView> {
     var onRightMouseDown: ((NSEvent) -> Void)?
+    var onMouseEntered: (() -> Void)?
+    var onMouseExited: (() -> Void)?
+    private var hoverTrackingArea: NSTrackingArea?
 
     override func rightMouseDown(with event: NSEvent) {
         onRightMouseDown?(event)
@@ -22,6 +25,31 @@ private final class PillHostingView: NSHostingView<PillIndicatorView> {
         } else {
             super.otherMouseDown(with: event)
         }
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        onMouseEntered?()
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        onMouseExited?()
+    }
+
+    override func updateTrackingAreas() {
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+        }
+
+        let trackingArea = NSTrackingArea(
+            rect: .zero,
+            options: [.activeAlways, .inVisibleRect, .mouseEnteredAndExited],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(trackingArea)
+        hoverTrackingArea = trackingArea
+
+        super.updateTrackingAreas()
     }
 }
 
@@ -37,7 +65,6 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
 
     private enum LayoutMetrics {
         static let compactSize = CGSize(width: 40, height: 10)
-        static let compactPillBottomPadding: CGFloat = 6
         static let hoverSize = CGSize(width: 332, height: 68)
         static let recordingSize = CGSize(width: 124, height: 30)
         static let processingSize = CGSize(width: 124, height: 30)
@@ -45,12 +72,9 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         static let compactBottomInset: CGFloat = 6
         static let expandedBottomInset: CGFloat = 10
 
-        static let hoverActivationInsetX: CGFloat = 20
-        static let hoverActivationInsetY: CGFloat = 20
         static let hoverRetentionInsetX: CGFloat = 10
         static let hoverRetentionInsetY: CGFloat = 8
         static let hoverCollapseDelay: TimeInterval = 0.14
-        static let hoverMonitorInterval: TimeInterval = 1.0 / 60.0
         static let hoverTooltipDelay: TimeInterval = 0.08
     }
 
@@ -72,10 +96,9 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
     private var recordingStartTime: Date?
     private var durationTimer: Timer?
     private var screenTrackingTimer: Timer?
-    private var hoverIntentTimer: Timer?
+    private var hoverCollapseTimer: Timer?
     private var hoverTooltipTimer: Timer?
     private var lastScreen: NSScreen?
-    private var lastHoverContactAt: Date = .distantPast
     private var isContextMenuOpen = false
 
     var onStartRecording: (() -> Void)?
@@ -117,7 +140,7 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
             return
         }
 
-        guard let screen = NSScreen.main else { return }
+        guard let screen = NSScreen.indicatorPresentationScreen(preferred: lastScreen) else { return }
 
         let state = layoutState
 
@@ -145,7 +168,6 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
 
         lastScreen = screen
         startScreenTracking()
-        startHoverIntentMonitoring()
     }
 
     private func startScreenTracking() {
@@ -163,21 +185,6 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         lastScreen = nil
     }
 
-    private func startHoverIntentMonitoring() {
-        hoverIntentTimer?.invalidate()
-        hoverIntentTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.hoverMonitorInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.evaluateHoverIntent()
-            }
-        }
-    }
-
-    private func stopHoverIntentMonitoring() {
-        hoverIntentTimer?.invalidate()
-        hoverIntentTimer = nil
-        lastHoverContactAt = .distantPast
-    }
-
     private func scheduleHoverTooltipReveal() {
         hoverTooltipTimer?.invalidate()
         hoverTooltipTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.hoverTooltipDelay, repeats: false) { [weak self] _ in
@@ -193,6 +200,32 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         hoverTooltipTimer?.invalidate()
         hoverTooltipTimer = nil
         isHoverTooltipVisible = false
+    }
+
+    private func cancelHoverCollapse() {
+        hoverCollapseTimer?.invalidate()
+        hoverCollapseTimer = nil
+    }
+
+    private func scheduleHoverCollapseIfNeeded() {
+        cancelHoverCollapse()
+        hoverCollapseTimer = Timer.scheduledTimer(withTimeInterval: LayoutMetrics.hoverCollapseDelay, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                guard let self = self else { return }
+                guard !self.isContextMenuOpen, !self.isRecording, !self.isProcessing else { return }
+                guard !self.isMouseInsideHoverRetentionArea() else { return }
+                self.setHoverState(false)
+            }
+        }
+    }
+
+    private func isMouseInsideHoverRetentionArea() -> Bool {
+        guard let panel = panel else { return false }
+        let retentionRect = panel.frame.insetBy(
+            dx: -LayoutMetrics.hoverRetentionInsetX,
+            dy: -LayoutMetrics.hoverRetentionInsetY
+        )
+        return retentionRect.contains(NSEvent.mouseLocation)
     }
 
     private func makeContextMenu() -> NSMenu {
@@ -349,64 +382,24 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         onSelectInputDeviceUID?(uid)
     }
 
-    private func evaluateHoverIntent() {
-        guard isVisible, !isRecording, !isProcessing else { return }
-        guard let panel = panel else { return }
-
-        let mouseLocation = NSEvent.mouseLocation
-        let now = Date()
-
-        if isContextMenuOpen {
-            lastHoverContactAt = now
-            return
-        }
-
-        let activationRect = compactPillFrame(in: panel.frame).insetBy(
-            dx: -LayoutMetrics.hoverActivationInsetX,
-            dy: -LayoutMetrics.hoverActivationInsetY
-        )
-        let retentionRect = panel.frame.insetBy(
-            dx: -LayoutMetrics.hoverRetentionInsetX,
-            dy: -LayoutMetrics.hoverRetentionInsetY
-        )
-
-        if isHovered {
-            if retentionRect.contains(mouseLocation) {
-                lastHoverContactAt = now
-                return
-            }
-
-            let timeOutside = now.timeIntervalSince(lastHoverContactAt)
-            if timeOutside >= LayoutMetrics.hoverCollapseDelay {
-                setHoverState(false)
-            }
-            return
-        }
-
-        if activationRect.contains(mouseLocation) {
-            lastHoverContactAt = now
-            setHoverState(true)
-        }
+    private func handleMouseEntered() {
+        guard isVisible, !isRecording, !isProcessing, !isContextMenuOpen else { return }
+        cancelHoverCollapse()
+        setHoverState(true)
     }
 
-    private func compactPillFrame(in panelFrame: NSRect) -> NSRect {
-        let width = LayoutMetrics.compactSize.width
-        let height = LayoutMetrics.compactSize.height
-
-        return NSRect(
-            x: panelFrame.midX - (width / 2),
-            y: panelFrame.minY + LayoutMetrics.compactPillBottomPadding,
-            width: width,
-            height: height
-        )
+    private func handleMouseExited() {
+        guard isVisible, !isRecording, !isProcessing else { return }
+        guard !isContextMenuOpen else { return }
+        scheduleHoverCollapseIfNeeded()
     }
 
     private func handleRightMouseDown(_ event: NSEvent) {
         guard isVisible, !isRecording, !isProcessing else { return }
         guard let hostingView = hostingView, let contextMenu = contextMenu else { return }
 
+        cancelHoverCollapse()
         setHoverState(true)
-        lastHoverContactAt = Date()
         isContextMenuOpen = true
         isHoverTooltipVisible = true
 
@@ -435,20 +428,26 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         guard menu == contextMenu else { return }
         refreshContextMenuState()
         isContextMenuOpen = true
+        cancelHoverCollapse()
         setHoverState(true)
-        lastHoverContactAt = Date()
         isHoverTooltipVisible = true
     }
 
     func menuDidClose(_ menu: NSMenu) {
         guard menu == contextMenu else { return }
         isContextMenuOpen = false
-        lastHoverContactAt = Date()
+        if isMouseInsideHoverRetentionArea() {
+            cancelHoverCollapse()
+        } else {
+            scheduleHoverCollapseIfNeeded()
+        }
     }
 
     private func checkAndUpdateScreenPosition() {
         guard isVisible, !isRecording, !isProcessing else { return }
-        guard let currentScreen = NSScreen.main, let panel = panel else { return }
+        guard let panel = panel,
+              let currentScreen = NSScreen.indicatorPresentationScreen(preferred: panel.screen ?? lastScreen)
+        else { return }
 
         if lastScreen !== currentScreen {
             lastScreen = currentScreen
@@ -461,9 +460,9 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         guard isVisible, !isRecording, !isProcessing else { return }
         guard isHovered != hovering else { return }
 
+        cancelHoverCollapse()
         isHovered = hovering
         if hovering {
-            lastHoverContactAt = Date()
             scheduleHoverTooltipReveal()
         }
         if !hovering {
@@ -493,8 +492,8 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
 
     func expandForRecording() {
         isHovered = false
+        cancelHoverCollapse()
         hideHoverTooltip()
-        lastHoverContactAt = .distantPast
         isRecording = true
         isProcessing = false
         recordingStartTime = Date()
@@ -512,8 +511,8 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
     func stopRecording() {
         isRecording = false
         isProcessing = true
+        cancelHoverCollapse()
         hideHoverTooltip()
-        lastHoverContactAt = .distantPast
         stopDurationTimer()
         refreshLayout(animated: true, duration: 0.2)
     }
@@ -522,9 +521,9 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         isRecording = false
         isProcessing = false
         isHovered = false
+        cancelHoverCollapse()
         hideHoverTooltip()
         audioLevel = 0
-        lastHoverContactAt = .distantPast
         refreshLayout(animated: true, duration: 0.22)
     }
 
@@ -534,7 +533,7 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
 
         stopDurationTimer()
         stopScreenTracking()
-        stopHoverIntentMonitoring()
+        cancelHoverCollapse()
         hideHoverTooltip()
         isVisible = false
         isHovered = false
@@ -609,15 +608,35 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
         hostingView.onRightMouseDown = { [weak self] event in
             self?.handleRightMouseDown(event)
         }
+        hostingView.onMouseEntered = { [weak self] in
+            self?.handleMouseEntered()
+        }
+        hostingView.onMouseExited = { [weak self] in
+            self?.handleMouseExited()
+        }
         return hostingView
     }
 
-    private func size(for _: LayoutState) -> CGSize {
-        LayoutMetrics.hoverSize
+    private func size(for state: LayoutState) -> CGSize {
+        switch state {
+        case .compact:
+            LayoutMetrics.compactSize
+        case .hover:
+            LayoutMetrics.hoverSize
+        case .recording:
+            LayoutMetrics.recordingSize
+        case .processing:
+            LayoutMetrics.processingSize
+        }
     }
 
-    private func bottomInset(for _: LayoutState) -> CGFloat {
-        LayoutMetrics.compactBottomInset
+    private func bottomInset(for state: LayoutState) -> CGFloat {
+        switch state {
+        case .compact:
+            LayoutMetrics.compactBottomInset
+        case .hover, .recording, .processing:
+            LayoutMetrics.expandedBottomInset
+        }
     }
 
     private func frame(for screen: NSScreen, state: LayoutState) -> NSRect {
@@ -637,7 +656,7 @@ final class PillFloatingIndicatorController: NSObject, ObservableObject, NSMenuD
 
     private func refreshLayout(animated: Bool, duration: TimeInterval = 0.22) {
         guard let panel = panel else { return }
-        guard let screen = NSScreen.main ?? panel.screen ?? NSScreen.screens.first else { return }
+        guard let screen = NSScreen.indicatorPresentationScreen(preferred: panel.screen ?? lastScreen) else { return }
 
         let state = layoutState
 
