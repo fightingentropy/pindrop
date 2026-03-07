@@ -82,6 +82,7 @@ struct SettingsObservationSnapshot: Equatable {
     let selectedInputDeviceUID: String
     let floatingIndicatorEnabled: Bool
     let floatingIndicatorType: String
+    let floatingIndicatorShowsWhenIdle: Bool
     let aiEnhancementEnabled: Bool
     let enableUIContext: Bool
     let vibeLiveSessionEnabled: Bool
@@ -937,6 +938,7 @@ final class AppCoordinator {
             selectedInputDeviceUID: settingsStore.selectedInputDeviceUID,
             floatingIndicatorEnabled: settingsStore.floatingIndicatorEnabled,
             floatingIndicatorType: settingsStore.floatingIndicatorType,
+            floatingIndicatorShowsWhenIdle: settingsStore.floatingIndicatorShowsWhenIdle,
             aiEnhancementEnabled: settingsStore.aiEnhancementEnabled,
             enableUIContext: settingsStore.enableUIContext,
             vibeLiveSessionEnabled: settingsStore.vibeLiveSessionEnabled,
@@ -994,7 +996,8 @@ final class AppCoordinator {
                     }
 
                     if previousSnapshot.floatingIndicatorEnabled != snapshot.floatingIndicatorEnabled
-                        || previousSnapshot.floatingIndicatorType != snapshot.floatingIndicatorType {
+                        || previousSnapshot.floatingIndicatorType != snapshot.floatingIndicatorType
+                        || previousSnapshot.floatingIndicatorShowsWhenIdle != snapshot.floatingIndicatorShowsWhenIdle {
                         self.updateFloatingIndicatorVisibility()
                     }
 
@@ -1023,14 +1026,37 @@ final class AppCoordinator {
     private func updateFloatingIndicatorVisibility() {
         guard !isRecording && !isProcessing else { return }
 
-        guard !isPillIndicatorTemporarilyHidden() else {
-            pillFloatingIndicatorController.hide()
-            return
-        }
-
-        if settingsStore.floatingIndicatorEnabled &&
-           settingsStore.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
+        if shouldShowIdlePillIndicator() {
             pillFloatingIndicatorController.showTab()
+        } else {
+            pillFloatingIndicatorController.hide()
+        }
+    }
+
+    private func shouldShowIdlePillIndicator() -> Bool {
+        Self.shouldShowIdlePillIndicator(
+            floatingIndicatorEnabled: settingsStore.floatingIndicatorEnabled,
+            floatingIndicatorType: settingsStore.floatingIndicatorType,
+            floatingIndicatorShowsWhenIdle: settingsStore.floatingIndicatorShowsWhenIdle,
+            isTemporarilyHidden: isPillIndicatorTemporarilyHidden()
+        )
+    }
+
+    static func shouldShowIdlePillIndicator(
+        floatingIndicatorEnabled: Bool,
+        floatingIndicatorType: String,
+        floatingIndicatorShowsWhenIdle: Bool,
+        isTemporarilyHidden: Bool
+    ) -> Bool {
+        floatingIndicatorEnabled
+            && floatingIndicatorType == FloatingIndicatorType.pill.rawValue
+            && floatingIndicatorShowsWhenIdle
+            && !isTemporarilyHidden
+    }
+
+    private func finishPillIndicatorForIdleState() {
+        if shouldShowIdlePillIndicator() {
+            pillFloatingIndicatorController.finishProcessing()
         } else {
             pillFloatingIndicatorController.hide()
         }
@@ -1773,11 +1799,8 @@ final class AppCoordinator {
     }
 
     private func handleNoSpeechDetected(context: String) {
-        Log.app.info("No speech detected for \(context); skipping output")
-        AlertManager.shared.showGenericErrorAlert(
-            title: "No Speech Detected",
-            message: "Pindrop couldn't detect any speech. Try speaking closer to your microphone and record again."
-        )
+        // Empty captures are expected enough that a modal alert is more disruptive than useful.
+        Log.app.info("No speech detected for \(context); skipping output without alert")
     }
 
     private func handleRecordingStartFailure(_ error: Error, source: RecordingTriggerSource) {
@@ -2428,7 +2451,7 @@ final class AppCoordinator {
         
         if settingsStore.floatingIndicatorEnabled {
             if settingsStore.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
-                pillFloatingIndicatorController.finishProcessing()
+                finishPillIndicatorForIdleState()
             } else {
                 floatingIndicatorController.finishProcessing()
             }
@@ -2450,7 +2473,7 @@ final class AppCoordinator {
 
         if settingsStore.floatingIndicatorEnabled {
             if settingsStore.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
-                pillFloatingIndicatorController.finishProcessing()
+                finishPillIndicatorForIdleState()
             } else {
                 floatingIndicatorController.finishProcessing()
             }
@@ -2581,7 +2604,7 @@ final class AppCoordinator {
         guard isRecording else {
             if settingsStore.floatingIndicatorEnabled {
                 if settingsStore.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
-                    pillFloatingIndicatorController.finishProcessing()
+                    finishPillIndicatorForIdleState()
                 } else {
                     floatingIndicatorController.finishProcessing()
                 }
@@ -2601,7 +2624,7 @@ final class AppCoordinator {
 
         if settingsStore.floatingIndicatorEnabled {
             if settingsStore.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
-                pillFloatingIndicatorController.finishProcessing()
+                finishPillIndicatorForIdleState()
             } else {
                 floatingIndicatorController.stopRecording()
             }

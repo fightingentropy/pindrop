@@ -141,6 +141,24 @@ just sign
 just verify-signature
 ```
 
+### Stable Local Permissions
+
+macOS privacy permissions are tied to the app's code requirement. Ad hoc signing
+changes that requirement on every rebuild, so microphone and accessibility
+permissions can be requested again even when the app bundle path stays the same.
+
+For local builds that keep permissions across rebuilds:
+
+```bash
+just install-dev
+```
+
+`just install-dev` installs a stable copy at `~/Applications/Pindrop Dev.app`
+and re-signs it with `PINDROP_DEV_SIGN_IDENTITY` when set. If that variable is
+not set, it automatically uses a local `Pindrop Local Dev` signing identity
+when available. Otherwise it falls back to ad hoc signing and permissions may
+reset.
+
 ## Notarization
 
 ### Setup

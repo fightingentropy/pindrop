@@ -118,6 +118,24 @@ struct GeneralSettingsView: View {
                         }
                         .pickerStyle(.segmented)
                         .padding(.top, 4)
+
+                        if settings.floatingIndicatorType == FloatingIndicatorType.pill.rawValue {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Show when idle")
+                                        .font(.body)
+                                    Text("Keep the pill visible while Pindrop is waiting to record")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Toggle("", isOn: $settings.floatingIndicatorShowsWhenIdle)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                            }
+                        }
                     }
                 }
             }

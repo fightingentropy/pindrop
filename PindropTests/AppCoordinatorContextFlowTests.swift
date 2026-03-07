@@ -155,4 +155,42 @@ final class AppCoordinatorContextFlowTests: XCTestCase {
         XCTAssertFalse(AppCoordinator.shouldPersistHistory(outputSucceeded: true, text: "   "))
         XCTAssertFalse(AppCoordinator.shouldPersistHistory(outputSucceeded: true, text: "[BLANK AUDIO]"))
     }
+
+    func testShouldShowIdlePillIndicatorRequiresEnabledPillStyleIdleVisibilityAndNoTemporaryHide() {
+        XCTAssertTrue(
+            AppCoordinator.shouldShowIdlePillIndicator(
+                floatingIndicatorEnabled: true,
+                floatingIndicatorType: FloatingIndicatorType.pill.rawValue,
+                floatingIndicatorShowsWhenIdle: true,
+                isTemporarilyHidden: false
+            )
+        )
+
+        XCTAssertFalse(
+            AppCoordinator.shouldShowIdlePillIndicator(
+                floatingIndicatorEnabled: true,
+                floatingIndicatorType: FloatingIndicatorType.pill.rawValue,
+                floatingIndicatorShowsWhenIdle: false,
+                isTemporarilyHidden: false
+            )
+        )
+
+        XCTAssertFalse(
+            AppCoordinator.shouldShowIdlePillIndicator(
+                floatingIndicatorEnabled: true,
+                floatingIndicatorType: FloatingIndicatorType.notch.rawValue,
+                floatingIndicatorShowsWhenIdle: true,
+                isTemporarilyHidden: false
+            )
+        )
+
+        XCTAssertFalse(
+            AppCoordinator.shouldShowIdlePillIndicator(
+                floatingIndicatorEnabled: true,
+                floatingIndicatorType: FloatingIndicatorType.pill.rawValue,
+                floatingIndicatorShowsWhenIdle: true,
+                isTemporarilyHidden: true
+            )
+        )
+    }
 }

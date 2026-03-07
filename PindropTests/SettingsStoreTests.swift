@@ -118,6 +118,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.aiEnhancementEnabled)
         XCTAssertTrue(store.floatingIndicatorEnabled)
         XCTAssertEqual(store.floatingIndicatorType, FloatingIndicatorType.pill.rawValue)
+        XCTAssertTrue(store.floatingIndicatorShowsWhenIdle)
         XCTAssertNil(store.apiEndpoint)
         XCTAssertNil(store.apiKey)
     }

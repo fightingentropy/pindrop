@@ -55,6 +55,7 @@ final class SettingsStore: ObservableObject {
          "You are a text enhancement assistant. Improve the grammar, punctuation, and formatting of the provided text while preserving its original meaning and tone. Return only the enhanced text without any additional commentary."
       static let floatingIndicatorEnabled = true
       static let floatingIndicatorType = FloatingIndicatorType.pill.rawValue
+      static let floatingIndicatorShowsWhenIdle = true
       static let noteEnhancementPrompt = """
          You are a note formatting assistant. Transform the transcribed text into a well-structured note.
 
@@ -150,6 +151,8 @@ final class SettingsStore: ObservableObject {
    var floatingIndicatorEnabled: Bool = Defaults.floatingIndicatorEnabled
    @AppStorage("floatingIndicatorType", store: SettingsStoreRuntime.appStorageStore)
    var floatingIndicatorType: String = Defaults.floatingIndicatorType
+   @AppStorage("floatingIndicatorShowsWhenIdle", store: SettingsStoreRuntime.appStorageStore)
+   var floatingIndicatorShowsWhenIdle: Bool = Defaults.floatingIndicatorShowsWhenIdle
    @AppStorage("showInDock", store: SettingsStoreRuntime.appStorageStore) var showInDock: Bool =
       false
    @AppStorage("addTrailingSpace", store: SettingsStoreRuntime.appStorageStore)
@@ -342,6 +345,7 @@ final class SettingsStore: ObservableObject {
       aiProvider = AIProvider.openai.rawValue
       floatingIndicatorEnabled = Defaults.floatingIndicatorEnabled
       floatingIndicatorType = Defaults.floatingIndicatorType
+      floatingIndicatorShowsWhenIdle = Defaults.floatingIndicatorShowsWhenIdle
       pauseMediaOnRecording = false
       muteAudioDuringRecording = false
       launchAtLogin = false

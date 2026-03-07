@@ -53,9 +53,19 @@ build-self-signed:
     xcodebuild -scheme {{scheme}} -configuration Release -derivedDataPath DerivedData \
         CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
         build
-    @echo "🔏 Re-signing with adhoc identity (required for macOS TCC permissions)..."
+    @echo "🔏 Re-signing with ad hoc identity (allows local TCC prompts, but permissions may reset after rebuilds)..."
     codesign --force --deep --sign - {{app_bundle}}
     @echo "✅ Self-signed build complete"
+
+# Build, install, and launch a stable local dev app bundle.
+# Set PINDROP_DEV_SIGN_IDENTITY to a persistent signing identity to keep
+# microphone/accessibility permissions across rebuilds.
+install-dev:
+    @echo "🔨 Building {{app_name}} for local dev install..."
+    xcodebuild -scheme {{scheme}} -configuration Release -derivedDataPath DerivedData \
+        CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO \
+        build
+    @./scripts/install-dev-app.sh {{app_bundle}}
 
 # Self-signed DMG (no developer account needed)
 dmg-self-signed: build-self-signed
