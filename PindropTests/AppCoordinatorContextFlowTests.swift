@@ -240,4 +240,90 @@ final class AppCoordinatorContextFlowTests: XCTestCase {
             )
         )
     }
+
+    func testStatusBarDynamicRefreshPlanSkipsMenuRegenerationForUnrelatedSettingsChanges() {
+        let previous = makeSettingsObservationSnapshot()
+        let current = makeSettingsObservationSnapshot(enableUIContext: true)
+
+        let plan = AppCoordinator.statusBarDynamicRefreshPlan(previous: previous, current: current)
+
+        XCTAssertFalse(plan.updateSummaryItems)
+        XCTAssertFalse(plan.refreshPromptPresetCheckmarks)
+        XCTAssertFalse(plan.refreshModelMenuItems)
+        XCTAssertFalse(plan.refreshAIModelMenuItems)
+        XCTAssertFalse(plan.refreshInputDeviceMenu)
+        XCTAssertFalse(plan.needsAnyUpdate)
+    }
+
+    func testStatusBarDynamicRefreshPlanRefreshesOnlyInputDevicesWhenMicrophoneChanges() {
+        let previous = makeSettingsObservationSnapshot(selectedInputDeviceUID: "")
+        let current = makeSettingsObservationSnapshot(selectedInputDeviceUID: "usb-mic")
+
+        let plan = AppCoordinator.statusBarDynamicRefreshPlan(previous: previous, current: current)
+
+        XCTAssertFalse(plan.updateSummaryItems)
+        XCTAssertFalse(plan.refreshPromptPresetCheckmarks)
+        XCTAssertFalse(plan.refreshModelMenuItems)
+        XCTAssertFalse(plan.refreshAIModelMenuItems)
+        XCTAssertTrue(plan.refreshInputDeviceMenu)
+        XCTAssertTrue(plan.needsAnyUpdate)
+    }
+
+    func testStatusBarDynamicRefreshPlanRefreshesOnlyAffectedSubmenus() {
+        let previous = makeSettingsObservationSnapshot()
+        let current = makeSettingsObservationSnapshot(
+            selectedPresetId: "preset-1",
+            selectedModel: "openai_whisper-small",
+            aiModel: "openai/gpt-4.1-mini"
+        )
+
+        let plan = AppCoordinator.statusBarDynamicRefreshPlan(previous: previous, current: current)
+
+        XCTAssertTrue(plan.updateSummaryItems)
+        XCTAssertTrue(plan.refreshPromptPresetCheckmarks)
+        XCTAssertTrue(plan.refreshModelMenuItems)
+        XCTAssertTrue(plan.refreshAIModelMenuItems)
+        XCTAssertFalse(plan.refreshInputDeviceMenu)
+        XCTAssertTrue(plan.needsAnyUpdate)
+    }
+
+    private func makeSettingsObservationSnapshot(
+        outputMode: String = "clipboard",
+        selectedInputDeviceUID: String = "",
+        floatingIndicatorEnabled: Bool = true,
+        floatingIndicatorType: String = FloatingIndicatorType.pill.rawValue,
+        floatingIndicatorShowsWhenIdle: Bool = true,
+        aiEnhancementEnabled: Bool = false,
+        launchAtLogin: Bool = false,
+        selectedPresetId: String? = nil,
+        selectedModel: String = SettingsStore.Defaults.selectedModel,
+        aiModel: String = SettingsStore.Defaults.aiModel,
+        aiProvider: AIProvider = .openai,
+        enableUIContext: Bool = false,
+        vibeLiveSessionEnabled: Bool = true
+    ) -> SettingsObservationSnapshot {
+        SettingsObservationSnapshot(
+            outputMode: outputMode,
+            selectedInputDeviceUID: selectedInputDeviceUID,
+            floatingIndicatorEnabled: floatingIndicatorEnabled,
+            floatingIndicatorType: floatingIndicatorType,
+            floatingIndicatorShowsWhenIdle: floatingIndicatorShowsWhenIdle,
+            aiEnhancementEnabled: aiEnhancementEnabled,
+            launchAtLogin: launchAtLogin,
+            selectedPresetId: selectedPresetId,
+            selectedModel: selectedModel,
+            aiModel: aiModel,
+            aiProvider: aiProvider,
+            enableUIContext: enableUIContext,
+            vibeLiveSessionEnabled: vibeLiveSessionEnabled,
+            hotkeys: HotkeySettingsSnapshot(
+                hasCompletedOnboarding: true,
+                pushToTalk: HotkeyBindingSnapshot(hotkey: "⌘/", keyCode: 44, modifiers: 0x100),
+                toggle: HotkeyBindingSnapshot(hotkey: "⌥Space", keyCode: 49, modifiers: 0x800),
+                copyLastTranscript: HotkeyBindingSnapshot(hotkey: "⇧⌘C", keyCode: 8, modifiers: 0x300),
+                quickCapturePTT: HotkeyBindingSnapshot(hotkey: "⇧⌥Space", keyCode: 49, modifiers: 0xA00),
+                quickCaptureToggle: HotkeyBindingSnapshot(hotkey: "", keyCode: 0, modifiers: 0)
+            )
+        )
+    }
 }

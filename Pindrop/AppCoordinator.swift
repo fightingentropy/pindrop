@@ -84,9 +84,30 @@ struct SettingsObservationSnapshot: Equatable {
     let floatingIndicatorType: String
     let floatingIndicatorShowsWhenIdle: Bool
     let aiEnhancementEnabled: Bool
+    let launchAtLogin: Bool
+    let selectedPresetId: String?
+    let selectedModel: String
+    let aiModel: String
+    let aiProvider: AIProvider
     let enableUIContext: Bool
     let vibeLiveSessionEnabled: Bool
     let hotkeys: HotkeySettingsSnapshot
+}
+
+struct StatusBarDynamicRefreshPlan: Equatable {
+    let updateSummaryItems: Bool
+    let refreshPromptPresetCheckmarks: Bool
+    let refreshModelMenuItems: Bool
+    let refreshAIModelMenuItems: Bool
+    let refreshInputDeviceMenu: Bool
+
+    var needsAnyUpdate: Bool {
+        updateSummaryItems
+            || refreshPromptPresetCheckmarks
+            || refreshModelMenuItems
+            || refreshAIModelMenuItems
+            || refreshInputDeviceMenu
+    }
 }
 
 @MainActor
@@ -942,6 +963,11 @@ final class AppCoordinator {
             floatingIndicatorType: settingsStore.floatingIndicatorType,
             floatingIndicatorShowsWhenIdle: settingsStore.floatingIndicatorShowsWhenIdle,
             aiEnhancementEnabled: settingsStore.aiEnhancementEnabled,
+            launchAtLogin: settingsStore.launchAtLogin,
+            selectedPresetId: settingsStore.selectedPresetId,
+            selectedModel: settingsStore.selectedModel,
+            aiModel: settingsStore.aiModel,
+            aiProvider: settingsStore.currentAIProvider,
             enableUIContext: settingsStore.enableUIContext,
             vibeLiveSessionEnabled: settingsStore.vibeLiveSessionEnabled,
             hotkeys: HotkeySettingsSnapshot(
@@ -1008,7 +1034,18 @@ final class AppCoordinator {
                         self.pillFloatingIndicatorController.updateStartRecordingHotkey(self.settingsStore.toggleHotkey)
                     }
 
-                    self.statusBarController.updateDynamicItems()
+                    let statusBarRefreshPlan = Self.statusBarDynamicRefreshPlan(
+                        previous: previousSnapshot,
+                        current: snapshot
+                    )
+                    if statusBarRefreshPlan.needsAnyUpdate {
+                        self.statusBarController.updateDynamicItems(
+                            shouldRefreshPromptPresetCheckmarks: statusBarRefreshPlan.refreshPromptPresetCheckmarks,
+                            shouldRefreshModelMenuItems: statusBarRefreshPlan.refreshModelMenuItems,
+                            shouldRefreshAIModelMenuItems: statusBarRefreshPlan.refreshAIModelMenuItems,
+                            shouldRefreshInputDeviceMenu: statusBarRefreshPlan.refreshInputDeviceMenu
+                        )
+                    }
                     if self.isRecording {
                         if self.shouldRunLiveContextSession() {
                             self.startLiveContextSessionIfNeeded(initialSnapshot: self.capturedSnapshot)
@@ -1023,6 +1060,27 @@ final class AppCoordinator {
                 }
             }
             .store(in: &cancellables)
+    }
+
+    static func statusBarDynamicRefreshPlan(
+        previous: SettingsObservationSnapshot,
+        current: SettingsObservationSnapshot
+    ) -> StatusBarDynamicRefreshPlan {
+        StatusBarDynamicRefreshPlan(
+            updateSummaryItems:
+                previous.outputMode != current.outputMode
+                || previous.aiEnhancementEnabled != current.aiEnhancementEnabled
+                || previous.floatingIndicatorEnabled != current.floatingIndicatorEnabled
+                || previous.launchAtLogin != current.launchAtLogin
+                || previous.selectedModel != current.selectedModel
+                || previous.aiModel != current.aiModel,
+            refreshPromptPresetCheckmarks: previous.selectedPresetId != current.selectedPresetId,
+            refreshModelMenuItems: previous.selectedModel != current.selectedModel,
+            refreshAIModelMenuItems:
+                previous.aiModel != current.aiModel
+                || previous.aiProvider != current.aiProvider,
+            refreshInputDeviceMenu: previous.selectedInputDeviceUID != current.selectedInputDeviceUID
+        )
     }
     
     private func updateFloatingIndicatorVisibility() {

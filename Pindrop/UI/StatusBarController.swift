@@ -482,7 +482,12 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         }
     }
 
-    func updateDynamicItems() {
+    func updateDynamicItems(
+        shouldRefreshPromptPresetCheckmarks: Bool = true,
+        shouldRefreshModelMenuItems: Bool = true,
+        shouldRefreshAIModelMenuItems: Bool = true,
+        shouldRefreshInputDeviceMenu: Bool = true
+    ) {
         // Update output mode
         let outputModeText = settingsStore.outputMode == "clipboard" ? "Clipboard" : "Direct Insert"
         outputModeItem?.title = "Mode: \(outputModeText)"
@@ -492,7 +497,9 @@ final class StatusBarController: NSObject, NSMenuDelegate {
         aiEnhancementItem?.title = "AI Enhancement: \(aiText)"
 
         // Update prompt preset checkmarks
-        updatePromptPresetCheckmarks()
+        if shouldRefreshPromptPresetCheckmarks {
+            updatePromptPresetCheckmarks()
+        }
 
         // Update floating indicator
         let indicatorText = settingsStore.floatingIndicatorEnabled ? "On" : "Off"
@@ -509,11 +516,17 @@ final class StatusBarController: NSObject, NSMenuDelegate {
             let modelShortName = settingsStore.selectedModel.replacingOccurrences(of: "openai_whisper-", with: "")
             currentModelItem?.title = "Current: \(modelShortName)"
         }
-        refreshModelMenuItems()
+        if shouldRefreshModelMenuItems {
+            refreshModelMenuItems()
+        }
 
-
-        refreshInputDeviceMenu()
-        refreshAIModelMenuItems()
+        currentAIModelItem?.title = "Current: \(settingsStore.aiModel)"
+        if shouldRefreshInputDeviceMenu {
+            refreshInputDeviceMenu()
+        }
+        if shouldRefreshAIModelMenuItems {
+            refreshAIModelMenuItems()
+        }
     }
 
     private func refreshModelMenuItems() {

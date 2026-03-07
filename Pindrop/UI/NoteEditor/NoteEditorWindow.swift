@@ -8,7 +8,10 @@
 import SwiftUI
 import SwiftData
 import AppKit
-import Combine
+
+private enum NoteEditorAutosaveMetrics {
+    static let debounceDelay: Duration = .milliseconds(350)
+}
 
 @MainActor
 final class NoteEditorWindowController: NSObject, NSWindowDelegate {
@@ -103,6 +106,13 @@ final class NoteEditorWindowController: NSObject, NSWindowDelegate {
 }
 
 struct NoteEditorView: View {
+
+    struct Draft: Equatable {
+        let title: String
+        let content: String
+        let isPinned: Bool
+        let tags: [String]
+    }
     
     let note: NoteSchema.Note?
     let isNewNote: Bool
@@ -116,6 +126,8 @@ struct NoteEditorView: View {
     @State private var tags: [String] = []
     @State private var newTag: String = ""
     @State private var currentNote: NoteSchema.Note?
+    @State private var autosaveRevision = 0
+    @State private var lastPersistedDraft: Draft?
     
     @FocusState private var titleFieldFocused: Bool
     @FocusState private var contentFieldFocused: Bool
@@ -155,13 +167,27 @@ struct NoteEditorView: View {
                 contentFieldFocused = true
             }
         }
-        .onChange(of: title) { _, _ in saveNote() }
-        .onChange(of: content) { _, _ in saveNote() }
+        .onDisappear {
+            persistDraftIfNeeded(force: true)
+        }
+        .task(id: autosaveRevision) {
+            guard autosaveRevision > 0 else { return }
+
+            do {
+                try await Task.sleep(for: NoteEditorAutosaveMetrics.debounceDelay)
+            } catch {
+                return
+            }
+
+            persistDraftIfNeeded()
+        }
+        .onChange(of: title) { _, _ in scheduleAutosave() }
+        .onChange(of: content) { _, _ in scheduleAutosave() }
         .onChange(of: isPinned) { _, newValue in
             onPinChange(newValue)
-            saveNote()
+            scheduleAutosave()
         }
-        .onChange(of: tags) { _, _ in saveNote() }
+        .onChange(of: tags) { _, _ in scheduleAutosave() }
     }
     
     private var headerView: some View {
@@ -237,6 +263,7 @@ struct NoteEditorView: View {
             // Only set currentNote for existing notes - new notes need to be inserted into context first
             if !isNewNote {
                 currentNote = note
+                lastPersistedDraft = currentDraft()
             }
         }
     }
@@ -255,26 +282,73 @@ struct NoteEditorView: View {
         
         do {
             try modelContext.save()
+            lastPersistedDraft = currentDraft()
         } catch {
             Log.app.error("Failed to create note: \(error)")
         }
     }
     
-    private func saveNote() {
+    private func scheduleAutosave() {
+        let draft = currentDraft()
+        guard Self.shouldScheduleAutosave(
+            hasPersistedNote: currentNote != nil,
+            lastPersistedDraft: lastPersistedDraft,
+            draft: draft
+        ) else {
+            return
+        }
+
+        autosaveRevision += 1
+    }
+
+    private func persistDraftIfNeeded(force: Bool = false) {
         guard let noteToSave = currentNote else { return }
+        let draft = currentDraft()
+
+        guard Self.shouldPersistDraft(force: force, lastPersistedDraft: lastPersistedDraft, draft: draft) else {
+            return
+        }
         
-        noteToSave.title = title.isEmpty ? "Untitled Note" : title
-        noteToSave.content = content
-        noteToSave.isPinned = isPinned
-        noteToSave.tags = tags
+        noteToSave.title = draft.title.isEmpty ? "Untitled Note" : draft.title
+        noteToSave.content = draft.content
+        noteToSave.isPinned = draft.isPinned
+        noteToSave.tags = draft.tags
         noteToSave.updatedAt = Date()
         
         do {
             try modelContext.save()
+            lastPersistedDraft = draft
             onSave(noteToSave)
         } catch {
             Log.app.error("Failed to save note: \(error)")
         }
+    }
+
+    private func currentDraft() -> Draft {
+        Draft(
+            title: title,
+            content: content,
+            isPinned: isPinned,
+            tags: tags
+        )
+    }
+
+    static func shouldScheduleAutosave(
+        hasPersistedNote: Bool,
+        lastPersistedDraft: Draft?,
+        draft: Draft
+    ) -> Bool {
+        guard hasPersistedNote else { return false }
+        return lastPersistedDraft != draft
+    }
+
+    static func shouldPersistDraft(
+        force: Bool,
+        lastPersistedDraft: Draft?,
+        draft: Draft
+    ) -> Bool {
+        guard let lastPersistedDraft else { return force }
+        return lastPersistedDraft != draft
     }
     
     private func addTag() {
