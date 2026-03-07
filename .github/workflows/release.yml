@@ -97,6 +97,7 @@ jobs:
         run: |
           if [ -z "${PINDROP_CODESIGN_P12_BASE64}" ] || [ -z "${PINDROP_CODESIGN_P12_PASSWORD}" ]; then
             echo "⚠️  No repository code signing certificate configured; release will fall back to ad hoc signing"
+            echo "PINDROP_HAS_CODESIGN_IDENTITY=0" >> "$GITHUB_ENV"
             exit 0
           fi
 
@@ -114,7 +115,8 @@ jobs:
           security default-keychain -d user -s "$KEYCHAIN_PATH"
 
           echo "✅ Imported repository code signing identity"
-          security find-identity -v -p codesigning
+          echo "PINDROP_HAS_CODESIGN_IDENTITY=1" >> "$GITHUB_ENV"
+          security find-identity -v -p codesigning || true
 
       - name: Wait For CI To Pass
         env:
@@ -185,9 +187,13 @@ jobs:
             exit 1
           fi
 
-          if security find-identity -v -p codesigning | grep -F "\"${{ env.CODE_SIGN_IDENTITY }}\"" >/dev/null; then
-            codesign --force --deep --sign "${{ env.CODE_SIGN_IDENTITY }}" "$APP_PATH"
-            echo "✅ App signed with persistent identity: ${{ env.CODE_SIGN_IDENTITY }}"
+          if [ "${PINDROP_HAS_CODESIGN_IDENTITY:-0}" = "1" ]; then
+            if codesign --force --deep --sign "${{ env.CODE_SIGN_IDENTITY }}" "$APP_PATH"; then
+              echo "✅ App signed with persistent identity: ${{ env.CODE_SIGN_IDENTITY }}"
+            else
+              echo "⚠️  Persistent identity import succeeded but codesign failed; falling back to ad hoc signing"
+              codesign --force --deep --sign - "$APP_PATH"
+            fi
           else
             codesign --force --deep --sign - "$APP_PATH"
             echo "⚠️  No persistent signing identity configured on runner; app signed ad hoc"
