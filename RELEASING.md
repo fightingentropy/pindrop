@@ -10,6 +10,7 @@ Pindrop uses [Sparkle](https://sparkle-project.org/) for automatic updates. Upda
 
 - **Public Key**: Embedded in `Pindrop/Info.plist` as `SUPublicEDKey`
 - **Private Key**: Stored securely in the macOS Keychain (automatically managed by Sparkle)
+- **GitHub Actions Secret**: `SPARKLE_PRIVATE_KEY` (preferred). The workflow also accepts the legacy name `SPARKLE_EDDSA_PRIVATE_KEY` during migration.
 
 **IMPORTANT**: The private key is NEVER committed to the repository. It is stored only in the macOS Keychain of the machine that generated it.
 
@@ -84,6 +85,8 @@ This will:
 - Download Sparkle tools if not present (to `bin/`)
 - Sign the DMG with your EdDSA private key
 - Generate `appcast.xml` with proper signatures
+
+If you use GitHub Actions for releases, store the private key as the repository secret `SPARKLE_PRIVATE_KEY`.
 
 4. **Upload the release**:
 - Upload `dist/Pindrop.dmg` to GitHub Releases
