@@ -10,7 +10,7 @@ Pindrop uses [Sparkle](https://sparkle-project.org/) for automatic updates. Upda
 
 - **Public Key**: Embedded in `Pindrop/Info.plist` as `SUPublicEDKey`
 - **Private Key**: Stored securely in the macOS Keychain (automatically managed by Sparkle)
-- **GitHub Actions Secret**: `SPARKLE_PRIVATE_KEY` (preferred). The workflow also accepts the legacy name `SPARKLE_EDDSA_PRIVATE_KEY` during migration.
+- **GitHub Actions Secret**: `SPARKLE_PRIVATE_KEY`
 
 **IMPORTANT**: The private key is NEVER committed to the repository. It is stored only in the macOS Keychain of the machine that generated it.
 

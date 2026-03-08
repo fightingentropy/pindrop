@@ -259,12 +259,9 @@ jobs:
       - name: Sign DMG with EdDSA
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
-          SPARKLE_EDDSA_PRIVATE_KEY: ${{ secrets.SPARKLE_EDDSA_PRIVATE_KEY }}
         run: |
-          EFFECTIVE_SPARKLE_PRIVATE_KEY="${SPARKLE_PRIVATE_KEY:-$SPARKLE_EDDSA_PRIVATE_KEY}"
-
-          if [ -z "$EFFECTIVE_SPARKLE_PRIVATE_KEY" ]; then
-            echo "⚠️  Warning: neither SPARKLE_PRIVATE_KEY nor SPARKLE_EDDSA_PRIVATE_KEY is set"
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "⚠️  Warning: SPARKLE_PRIVATE_KEY is not set"
             echo "   Skipping EdDSA signing - updates will not be verifiable!"
             echo "   To enable signing, add your EdDSA private key to GitHub Secrets"
             echo "dmg_signature=" >> $GITHUB_ENV
@@ -276,7 +273,7 @@ jobs:
           # Sign the DMG using Sparkle's sign_update tool
           # The tool outputs: sparkle:edSignature="..." length="..."
           # We extract just the signature value
-          SIGN_OUTPUT=$(echo "$EFFECTIVE_SPARKLE_PRIVATE_KEY" | ./bin/sign_update "$DMG_PATH" -f -)
+          SIGN_OUTPUT=$(echo "$SPARKLE_PRIVATE_KEY" | ./bin/sign_update "$DMG_PATH" -f -)
           SIGNATURE=$(echo "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
 
           echo "✅ DMG signed with EdDSA"
